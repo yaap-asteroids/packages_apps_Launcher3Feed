@@ -23,5 +23,3 @@ rootProject.name = "Launcher3FeedHelloWorld"
 include(":core")
 include(":helloworld")
 include(":glance")
-include(":google-gsa")
-project(":google-gsa").projectDir = File(rootDir, "google-gsa")

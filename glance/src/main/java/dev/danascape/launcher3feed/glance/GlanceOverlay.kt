@@ -197,14 +197,11 @@ class GlanceOverlay(private val context: Context) :
      * to a light dim where blur is unsupported.
      */
     private fun applyEditBackground(editing: Boolean) {
-        val overlayWindow = window
         val blurSupported =
-            overlayWindow != null &&
-                context.getSystemService(WindowManager::class.java)
-                    ?.isCrossWindowBlurEnabled == true
+            context.getSystemService(WindowManager::class.java)?.isCrossWindowBlurEnabled == true
 
         if (blurSupported) {
-            overlayWindow.setBackgroundBlurRadius(if (editing) editBlurRadiusPx() else 0)
+            window.setBackgroundBlurRadius(if (editing) editBlurRadiusPx() else 0)
             root.setBackgroundColor(Color.TRANSPARENT)
         } else {
             // No blur on this device, so fall back to a light dim rather than nothing.

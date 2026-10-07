@@ -4,11 +4,14 @@ android_library {
     platform_apis: true,
 
     srcs: [
-        "core/src/main/java/**/*.java",
+        "core/src/main/aidl/**/*.aidl",
         "core/src/main/java/**/*.kt",
-        "google-gsa/src/main/java/**/*.java",
-        "google-gsa/src/main/java/**/*.kt",
     ],
+
+    aidl: {
+        local_include_dirs: ["core/src/main/aidl"],
+        export_include_dirs: ["core/src/main/aidl"],
+    },
 
     static_libs: [
         "androidx.core_core",
