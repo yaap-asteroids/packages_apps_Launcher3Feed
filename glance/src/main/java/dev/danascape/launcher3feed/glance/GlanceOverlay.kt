@@ -183,12 +183,28 @@ class GlanceOverlay(private val context: Context) :
         layoutColumnPadding()
     }
 
+    /**
+     * Matches `gridContentPadding`: in edit mode the toolbar's own top inset (here, [barTop] in
+     * place of its cutout-derived one), its height and one more gap sit above the first widget,
+     * with just one gap below the last. Outside edit mode the hub bakes in the average of those
+     * two instead of removing them, so a widget's height only changes by half as much when edit
+     * mode toggles, rather than jumping the toolbar's full height.
+     *
+     * [barBottom] has no equivalent in that formula — the hub's own root handles nav bar
+     * clearance outside of it — and is added on top of the result as this window's own, in both
+     * modes.
+     */
     private fun layoutColumnPadding() {
         val density = context.resources.displayMetrics.density
         val pad = hubMetrics.itemSpacingPx(density)
-        // In edit mode the toolbar sits above the widgets, so they start below it.
-        val toolbarSpace = if (editMode) (TOOLBAR_SPACE_DP * density).toInt() else 0
-        widgetColumn.setPadding(pad, pad + barTop + toolbarSpace, pad, pad + barBottom)
+        val toolbarHeightPx = (HubMetrics.TOOLBAR_HEIGHT_DP * density).toInt()
+
+        val editTop = barTop + toolbarHeightPx + pad
+        val editBottom = pad
+        val top = if (editMode) editTop else (editTop + editBottom) / 2
+        val bottom = if (editMode) editBottom else (editTop + editBottom) / 2
+
+        widgetColumn.setPadding(pad, top, pad, bottom + barBottom)
         toolbar.setPadding(toolbar.paddingLeft, barTop, toolbar.paddingRight, 0)
     }
 
@@ -420,9 +436,6 @@ class GlanceOverlay(private val context: Context) :
     companion object {
         private const val TAG = "GlanceOverlay"
         private const val MESSAGE_SP = 16f
-
-        /** Room reserved above the widgets for the edit toolbar. */
-        private const val TOOLBAR_SPACE_DP = 64f
 
         /** The responsive grid's smallest widget is one row; its largest fills every row. */
         private const val RESPONSIVE_MIN_SPAN = 1

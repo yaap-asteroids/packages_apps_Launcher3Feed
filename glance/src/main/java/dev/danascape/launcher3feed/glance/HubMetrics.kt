@@ -21,7 +21,7 @@ import android.content.Context
  */
 class HubMetrics private constructor(private val itemSpacingDp: Float) {
 
-    /** Gap between stacked cards, `Dimensions.ItemSpacing`. */
+    /** Gap between stacked cards, `Dimensions.ItemSpacingCompact`. */
     fun itemSpacingPx(density: Float): Int = (itemSpacingDp * density).toInt()
 
     /**
@@ -56,8 +56,16 @@ class HubMetrics private constructor(private val itemSpacingDp: Float) {
         /** Rows of the older fixed grid, where `CommunalContentSize` spans are 2, 3 or 6. */
         const val FIXED_ROWS = 6
 
-        /** `Dimensions.ItemSpacing` with the responsive grid. */
-        private const val ITEM_SPACING_DP = 32f
+        /**
+         * `Dimensions.ItemSpacingCompact`. The hub only uses the larger `ItemSpacing` (32dp) on
+         * medium and expanded windows; a phone is always a compact window, so this is the one that
+         * applies here, for both the gap the grid itself is arranged with and the padding
+         * `gridContentPadding` gives it.
+         */
+        private const val ITEM_SPACING_DP = 16f
+
+        /** `Dimensions.ToolbarHeight`, the edit-mode toolbar's own height. */
+        const val TOOLBAR_HEIGHT_DP = 40f
 
         fun from(context: Context): HubMetrics = HubMetrics(ITEM_SPACING_DP)
 

@@ -41,6 +41,8 @@ class GlanceEditToolbar(
 
     init {
         val density = resources.displayMetrics.density
+        // The top value is a placeholder: GlanceOverlay overwrites it with the real status bar
+        // inset as soon as one is available, in place of the hub's own cutout-derived padding.
         setPadding(
             (TOOLBAR_PADDING_HORIZONTAL_DP * density).toInt(),
             (TOOLBAR_PADDING_TOP_DP * density).toInt(),
@@ -70,7 +72,7 @@ class GlanceEditToolbar(
         TextView(context).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             gravity = Gravity.CENTER
-            minHeight = (TOOLBAR_HEIGHT_DP * density).toInt()
+            minHeight = (HubMetrics.TOOLBAR_HEIGHT_DP * density).toInt()
             val h = (BUTTON_PADDING_HORIZONTAL_DP * density).toInt()
             setPadding(h, 0, h, 0)
         }
@@ -95,7 +97,7 @@ class GlanceEditToolbar(
         button.background =
             GradientDrawable().apply {
                 // Material 3 buttons are pills, so the radius is half the height.
-                cornerRadius = TOOLBAR_HEIGHT_DP * density / 2f
+                cornerRadius = HubMetrics.TOOLBAR_HEIGHT_DP * density / 2f
                 if (filled) {
                     setColor(theme.primary)
                 } else {
@@ -107,14 +109,15 @@ class GlanceEditToolbar(
     }
 
     companion object {
-        /** `Dimensions.ToolbarHeight`. Plain dp in the hub, not adjustedDp. */
-        private const val TOOLBAR_HEIGHT_DP = 40f
-
         /** `Dimensions.ToolbarPaddingTop` with the responsive grid. */
         private const val TOOLBAR_PADDING_TOP_DP = 12f
 
-        /** `Dimensions.ToolbarPaddingHorizontal`, which is ItemSpacing. */
-        private const val TOOLBAR_PADDING_HORIZONTAL_DP = 32f
+        /**
+         * `Dimensions.toolbarHorizontalPadding` for a phone (the hub's `WindowSizeCategory.MOBILE`
+         * case). This is a separate, smaller value from the grid's own `ItemSpacing`-based
+         * [HubMetrics] gap — the hub does not use the same inset for both.
+         */
+        private const val TOOLBAR_PADDING_HORIZONTAL_DP = 9f
 
         /** `Dimensions.ToolbarButtonPaddingHorizontal`. */
         private const val BUTTON_PADDING_HORIZONTAL_DP = 24f
