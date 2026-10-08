@@ -54,6 +54,17 @@ class GlanceOverlay(private val context: Context) :
     private var editMode = false
     private var selectedId: Int? = null
 
+    /**
+     * Widget content that arrived while the launcher was not visible, newest per widget. Applying
+     * RemoteViews inflates views, so it waits until the panel can be seen instead of running for
+     * every clock tick or media update while another app is in front.
+     */
+    private val deferredViews = mutableMapOf<Int, RemoteViews?>()
+    private var started = false
+
+    /** Ids and spans last laid out; an update that changes neither leaves the views alone. */
+    private var laidOut: List<Pair<Int, Int>> = emptyList()
+
     override fun onCreateContentView(inflater: LayoutInflater, container: ViewGroup): View {
         val density = context.resources.displayMetrics.density
         val pad = hubMetrics.itemSpacingPx(density)
@@ -135,10 +146,21 @@ class GlanceOverlay(private val context: Context) :
         client.connect(this)
     }
 
+    override fun onStart() {
+        started = true
+        deferredViews.forEach { (id, views) -> widgetViews[id]?.updateAppWidget(views) }
+        deferredViews.clear()
+    }
+
+    override fun onStop() {
+        started = false
+    }
+
     override fun onDestroy() {
         client.disconnect()
         widgetFrames.clear()
         widgetViews.clear()
+        deferredViews.clear()
         super.onDestroy()
     }
 
@@ -256,7 +278,9 @@ class GlanceOverlay(private val context: Context) :
         if (!available) {
             widgetFrames.clear()
             widgetViews.clear()
+            deferredViews.clear()
             widgets = emptyList()
+            laidOut = emptyList()
             widgetColumn.removeAllViews()
             showMessage(R.string.glance_unavailable)
         }
@@ -270,16 +294,20 @@ class GlanceOverlay(private val context: Context) :
         val liveIds = widgets.map { it.appWidgetId }.toSet()
         widgetFrames.keys.retainAll(liveIds)
         widgetViews.keys.retainAll(liveIds)
+        deferredViews.keys.retainAll(liveIds)
         if (selectedId !in liveIds) selectedId = null
-        widgetColumn.removeAllViews()
 
         if (widgets.isEmpty()) {
+            laidOut = emptyList()
+            widgetColumn.removeAllViews()
             showMessage(R.string.glance_empty)
             toolbar.removeEnabled = false
             return
         }
 
-        layoutWidgets()
+        // The hub resends the whole list on any change; re-adding every view would detach and
+        // re-lay out all widgets for nothing.
+        if (widgets.map { it.appWidgetId to it.spanY } != laidOut) layoutWidgets()
         toolbar.removeEnabled = selectedId != null
     }
 
@@ -301,6 +329,7 @@ class GlanceOverlay(private val context: Context) :
 
         val rows = HubMetrics.rowsFor(widgets.map { it.spanY })
         widgetColumn.removeAllViews()
+        laidOut = widgets.map { it.appWidgetId to it.spanY }
 
         widgets.forEach { widget ->
             val frame = widgetFrames.getOrPut(widget.appWidgetId) { newFrame(widget) }
@@ -320,6 +349,10 @@ class GlanceOverlay(private val context: Context) :
     }
 
     override fun onWidgetViewsUpdated(appWidgetId: Int, views: RemoteViews?) {
+        if (!started) {
+            deferredViews[appWidgetId] = views
+            return
+        }
         val hostView = widgetViews[appWidgetId]
         if (hostView == null) {
             // Content arrived before the hub told us about the widget; the next list update

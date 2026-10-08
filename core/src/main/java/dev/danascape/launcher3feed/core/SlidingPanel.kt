@@ -79,7 +79,17 @@ internal class SlidingPanel(context: Context, private val listener: Listener) :
     var isPanelOpen = false
         private set
 
+    /**
+     * True from the start of a drag or settle until the panel rests. While moving, the content is
+     * drawn into a hardware layer, so each frame only moves a texture instead of redrawing every
+     * widget.
+     */
     private var isMoving = false
+        set(value) {
+            if (field == value) return
+            field = value
+            content?.setLayerType(if (value) LAYER_TYPE_HARDWARE else LAYER_TYPE_NONE, null)
+        }
 
     private var velocityTracker: VelocityTracker? = null
     private var activePointerId = INVALID_POINTER
@@ -190,7 +200,9 @@ internal class SlidingPanel(context: Context, private val listener: Listener) :
     fun setOffset(px: Int) {
         val width = width
         if (width <= 0) return
-        offsetPx = if (px <= 1) 0 else min(px, width)
+        val clamped = if (px <= 1) 0 else min(px, width)
+        if (clamped == offsetPx && progress == clamped.toFloat() / width) return
+        offsetPx = clamped
         progress = offsetPx.toFloat() / width
         content?.translationX = (if (isRtl) -offsetPx else offsetPx).toFloat()
         listener.onPanelProgress(progress)
