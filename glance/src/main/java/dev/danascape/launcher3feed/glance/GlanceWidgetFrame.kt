@@ -14,8 +14,15 @@ import android.widget.FrameLayout
  * Wraps a widget so it can be selected and resized in edit mode.
  *
  * The hub outlines the selected widget and puts a drag handle above and below it, one per
- * [ResizeHandle], and dragging changes how many spans the widget takes. This is the same shape:
- * `ResizeableItemFrame` draws `ResizeHandle.TOP` and `ResizeHandle.BOTTOM` around the content.
+ * [ResizeHandle], and dragging changes how many spans the widget takes:
+ * `ResizableItemFrame` draws `ResizeHandle.TOP` and `ResizeHandle.BOTTOM` around the content, each
+ * a `DragHandle` — a small filled circle ringed with a border, centered on the content's own top
+ * or bottom edge. (A second, pill-shaped handle exists in the same file, but only for the
+ * accessibility resize controls a long-press-to-toggle reveals in place of the plain drag handle;
+ * the always-visible one a finger drags is the circle.) Our handles sit fully inside the frame
+ * at that edge rather than straddling it half in, half out as the hub's do — doing that here
+ * would mean turning off child clipping on this frame, the column holding it and the scroll view
+ * around that, which isn't worth the risk of a visual regression we can't see without a build.
  *
  * While edit mode is off the frame is inert and the widget receives touches as usual.
  */
@@ -145,27 +152,19 @@ class GlanceWidgetFrame(
     private fun handle(gravity: Int): View {
         val view = View(context)
         val isTop = gravity == Gravity.TOP
-        // The hub's handle is a 32dp pill inside a 48dp touch target, rounded on its outer edge
-        // only: `resizeButtonShape` rounds the top for the top handle, the bottom for the bottom.
-        view.layoutParams =
-            LayoutParams(
-                (HANDLE_CONTENT_SIZE_DP * density).toInt(),
-                (HANDLE_TOUCH_SIZE_DP * density).toInt(),
-                gravity or Gravity.CENTER_HORIZONTAL,
-            )
-        val r = HANDLE_TOUCH_SIZE_DP * density / 2f
+        // `DragHandle`'s own call site in CommunalHub.kt never overrides its 8dp `dragHandleRadius`
+        // default, so the real handle is a 16dp circle: a filled disc behind a ring the same
+        // 2dp [BORDER_WIDTH_DP] as the selected-widget outline.
+        val size = (HANDLE_DIAMETER_DP * density).toInt()
+        view.layoutParams = LayoutParams(size, size, gravity or Gravity.CENTER_HORIZONTAL)
         view.background =
             GradientDrawable().apply {
-                cornerRadii =
-                    if (isTop) {
-                        floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
-                    } else {
-                        floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r)
-                    }
+                shape = GradientDrawable.OVAL
                 setColor(theme.tertiaryContainer)
+                setStroke((BORDER_WIDTH_DP * density).toInt(), theme.onTertiaryContainer)
             }
         view.visibility = View.GONE
-        attachDragBehaviour(view, isTop = gravity == Gravity.TOP)
+        attachDragBehaviour(view, isTop = isTop)
         return view
     }
 
@@ -200,16 +199,18 @@ class GlanceWidgetFrame(
     }
 
     companion object {
-        /** `communal_enforced_rounded_corner_max_radius`, the radius the hub enforces on cards. */
+        /**
+         * `android.R.dimen.system_app_widget_background_radius`, which `ResizableItemFrame`'s own
+         * call site leaves at its default. Its un-flagged value is 28dp; a
+         * `use_smaller_app_widget_system_radius` flag can drop it to 24dp, but that can't be read
+         * from here, so this takes the baseline.
+         */
         private const val CORNER_RADIUS_DP = 28f
 
-        /** `ResizeFrameDimensions.BorderWidth`. */
+        /** `ResizeFrameDimensions.BorderWidth`, also the selected-widget outline's own width. */
         private const val BORDER_WIDTH_DP = 2f
 
-        /** `ResizeFrameDimensions.TouchTargetSize`. */
-        private const val HANDLE_TOUCH_SIZE_DP = 48f
-
-        /** `ResizeFrameDimensions.ResizeButtonContentSize`. */
-        private const val HANDLE_CONTENT_SIZE_DP = 32f
+        /** Twice `DragHandle`'s own `dragHandleRadius` default (8dp), its call site's own value. */
+        private const val HANDLE_DIAMETER_DP = 16f
     }
 }
