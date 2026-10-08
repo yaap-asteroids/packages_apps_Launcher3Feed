@@ -57,11 +57,15 @@ class GlanceWidgetPickerActivity : Activity(), GlanceableHubWidgetClient.Callbac
             return
         }
 
+        val density = resources.displayMetrics.density
         val intent =
             Intent(Intent.ACTION_PICK).apply {
                 setPackage(launcher)
-                putExtra(EXTRA_DESIRED_WIDGET_WIDTH, PICKER_WIDGET_WIDTH_DP)
-                putExtra(EXTRA_DESIRED_WIDGET_HEIGHT, PICKER_WIDGET_HEIGHT_DP)
+                // CommunalEditModeViewModel sends these as resolved pixels
+                // (resources.getDimensionPixelSize), not raw dp; Trebuchet does not read this pair
+                // today, but a picker that does should get what it actually asks for.
+                putExtra(EXTRA_DESIRED_WIDGET_WIDTH, (PICKER_WIDGET_WIDTH_DP * density).toInt())
+                putExtra(EXTRA_DESIRED_WIDGET_HEIGHT, (PICKER_WIDGET_HEIGHT_DP * density).toInt())
                 putExtra(AppWidgetManager.EXTRA_CATEGORY_FILTER, INCLUDED_CATEGORIES)
                 putExtra(EXTRA_CATEGORY_EXCLUSION_FILTER, EXCLUDED_CATEGORIES)
                 putExtra(EXTRA_UI_SURFACE_KEY, EXTRA_UI_SURFACE_VALUE)
@@ -198,8 +202,8 @@ class GlanceWidgetPickerActivity : Activity(), GlanceableHubWidgetClient.Callbac
         private const val EXTRA_UI_SURFACE_VALUE = "widgets_hub"
 
         /** SystemUI's communal_widget_picker_desired_width/height. */
-        private const val PICKER_WIDGET_WIDTH_DP = 360
-        private const val PICKER_WIDGET_HEIGHT_DP = 240
+        private const val PICKER_WIDGET_WIDTH_DP = 360f
+        private const val PICKER_WIDGET_HEIGHT_DP = 240f
 
         private val INCLUDED_CATEGORIES =
             AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN or
