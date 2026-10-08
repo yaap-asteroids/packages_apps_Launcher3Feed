@@ -36,6 +36,16 @@ class HubMetrics private constructor(private val itemSpacingDp: Float) {
         return (spans * cell + (spans - 1) * spacing).coerceAtLeast(1)
     }
 
+    /**
+     * Pixel pitch of one hub row: a one-span widget's height plus the gap below it.
+     *
+     * This is the unit the hub's own resize anchors step by (`getPxOffsetForResize(1)` in
+     * `ResizeableItemFrameViewModel`), so a drag that covers one pitch commits one span here too,
+     * regardless of how many spans the widget being resized currently occupies.
+     */
+    fun rowPitchPx(rows: Int, availableHeightPx: Int, density: Float): Int =
+        widgetHeightPx(1, rows, availableHeightPx, density) + itemSpacingPx(density)
+
     companion object {
         /**
          * Rows the hub uses on a phone, from `calculateNumCellsHeight`, which returns 3 for any

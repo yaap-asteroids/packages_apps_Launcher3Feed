@@ -267,7 +267,16 @@ class GlanceOverlay(private val context: Context) :
 
     private fun resizeWidget(appWidgetId: Int, spanDelta: Int) {
         val current = widgets.firstOrNull { it.appWidgetId == appWidgetId } ?: return
-        val target = (current.spanY + spanDelta).coerceIn(MIN_SPAN, MAX_SPAN)
+        val rows = HubMetrics.rowsFor(widgets.map { it.spanY })
+        // rowsFor only ever answers RESPONSIVE_ROWS or FIXED_ROWS, so this tells the two scales
+        // apart the same way it already does for layout.
+        val range =
+            if (rows == HubMetrics.RESPONSIVE_ROWS) {
+                RESPONSIVE_MIN_SPAN..rows
+            } else {
+                FIXED_MIN_SPAN..FIXED_MAX_SPAN
+            }
+        val target = (current.spanY + spanDelta).coerceIn(range)
         if (target == current.spanY) return
         client.resizeWidget(appWidgetId, target, widgets.map { it.appWidgetId })
     }
@@ -328,6 +337,7 @@ class GlanceOverlay(private val context: Context) :
         if (available <= 0) return
 
         val rows = HubMetrics.rowsFor(widgets.map { it.spanY })
+        val rowPitch = hubMetrics.rowPitchPx(rows, available, density).toFloat()
         widgetColumn.removeAllViews()
         laidOut = widgets.map { it.appWidgetId to it.spanY }
 
@@ -335,6 +345,7 @@ class GlanceOverlay(private val context: Context) :
             val frame = widgetFrames.getOrPut(widget.appWidgetId) { newFrame(widget) }
             frame.editMode = editMode
             frame.editSelected = widget.appWidgetId == selectedId
+            frame.rowPitchPx = rowPitch
             (frame.parent as? ViewGroup)?.removeView(frame)
             frame.layoutParams =
                 LinearLayout.LayoutParams(
@@ -413,9 +424,18 @@ class GlanceOverlay(private val context: Context) :
         /** Room reserved above the widgets for the edit toolbar. */
         private const val TOOLBAR_SPACE_DP = 64f
 
-        /** `CommunalContentSize.FixedSize`: THIRD is the smallest, FULL the largest. */
-        private const val MIN_SPAN = 2
-        private const val MAX_SPAN = 6
+        /** The responsive grid's smallest widget is one row; its largest fills every row. */
+        private const val RESPONSIVE_MIN_SPAN = 1
+
+        /**
+         * `CommunalContentSize.FixedSize`: THIRD is the smallest, FULL the largest. The fixed grid
+         * is deprecated and not what a current build lays out with (see [HubMetrics]); this range
+         * is only a fallback should widgets ever arrive on that scale. It only bounds the result,
+         * so a drag can still land on a span the fixed grid has no named size for (4 or 5); the
+         * hub does not expose which exact sizes that scale allows from here.
+         */
+        private const val FIXED_MIN_SPAN = 2
+        private const val FIXED_MAX_SPAN = 6
 
         /** Used only where cross-window blur is unavailable. */
         private const val EDIT_DIM_COLOR = 0x66000000

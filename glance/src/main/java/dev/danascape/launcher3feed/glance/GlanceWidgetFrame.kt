@@ -52,6 +52,13 @@ class GlanceWidgetFrame(
             updateChrome()
         }
 
+    /**
+     * Pixel pitch of one hub row, set by the overlay from [HubMetrics.rowPitchPx]. The resize
+     * handles commit one span per pitch of drag, so this stays the step unit regardless of how
+     * many spans the widget itself currently occupies.
+     */
+    var rowPitchPx: Float = 1f
+
     init {
         addView(topHandle)
         addView(bottomHandle)
@@ -178,10 +185,9 @@ class GlanceWidgetFrame(
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val spanPx = height.toFloat().coerceAtLeast(1f)
                     // Dragging the top handle up, or the bottom handle down, grows the widget.
                     val travel = if (isTop) downY - event.rawY else event.rawY - downY
-                    val steps = (travel / (spanPx / 2f)).toInt()
+                    val steps = (travel / rowPitchPx.coerceAtLeast(1f)).toInt()
                     if (steps != committed) {
                         onResize(steps - committed)
                         committed = steps
